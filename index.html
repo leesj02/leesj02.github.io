@@ -1,403 +1,1457 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>2048</title>
-<style>
-  :root{
-    --bg:#FAF8EF;
-    --board:#BBADA0;
-    --cell:rgba(238,228,218,0.35);
-    --text-dark:#776E65;
-  }
-  *{box-sizing:border-box;}
-  html,body{
-    margin:0;padding:0;height:100%;
-    background:var(--bg);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
-    display:flex;align-items:center;justify-content:center;
-    overflow:hidden;
-    -webkit-tap-highlight-color:transparent;
-    touch-action:none;
-  }
-  #app{ width:100%; max-width:420px; padding:20px; }
-  header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
-  h1{ margin:0; font-size:42px; font-weight:800; color:var(--text-dark); letter-spacing:-0.02em; }
-  .sub{ font-size:13px; color:#9B9088; margin-top:2px; }
-  .scores{ display:flex; gap:8px; }
-  .score-box{ position:relative; background:var(--board); border-radius:7px; padding:8px 16px; text-align:center; min-width:64px; }
-  .score-box .l{ font-size:10px; color:#EEE4DA; font-weight:700; letter-spacing:.04em; }
-  .score-box .n{ font-size:20px; color:#fff; font-weight:800; font-variant-numeric:tabular-nums; }
-  .float-gain{
-    position:absolute; top:-4px; left:50%;
-    transform:translateX(-50%);
-    color:#776E65; font-weight:800; font-size:15px;
-    pointer-events:none;
-    animation:floatUp .7s ease-out forwards;
-  }
-  @keyframes floatUp{
-    0%{ opacity:0; transform:translate(-50%,4px); }
-    25%{ opacity:1; }
-    100%{ opacity:0; transform:translate(-50%,-28px); }
-  }
-  .toolbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-  .hint{ font-size:13px; color:#9B9088; }
-  button{ font-family:inherit; border:none; cursor:pointer; }
-  #newGame{ background:#8F7A66; color:#fff; font-size:14px; font-weight:700; padding:9px 16px; border-radius:7px; transition:transform .08s; }
-  #newGame:active{ transform:translateY(1px) scale(.97); }
-  #board-wrap{ position:relative; background:var(--board); border-radius:10px; padding:10px; box-shadow:0 14px 34px rgba(119,110,101,0.25); }
-  #board{ position:relative; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(4,1fr); gap:10px; width:100%; aspect-ratio:1/1; }
-  .bg-cell{ background:var(--cell); border-radius:6px; }
-  #tiles{ position:absolute; inset:10px; }
-  .tile-pos{
-    position:absolute; top:0; left:0;
-    will-change:transform;
-  }
-  .tile-inner{
-    width:100%; height:100%;
-    display:flex; align-items:center; justify-content:center;
-    border-radius:6px;
-    font-weight:800;
-    box-shadow:0 1px 0 rgba(255,255,255,0.25) inset, 0 2px 4px rgba(0,0,0,0.08);
-  }
-  .pop-new .tile-inner{ animation:tileNew .18s ease-out; }
-  .pop-merge .tile-inner{ animation:tileMerge .16s ease-in-out; }
-  @keyframes tileNew{
-    0%{ transform:scale(0); }
-    70%{ transform:scale(1.08); }
-    100%{ transform:scale(1); }
-  }
-  @keyframes tileMerge{
-    0%{ transform:scale(1); }
-    45%{ transform:scale(1.18); }
-    100%{ transform:scale(1); }
-  }
-  .panel{
-    position:absolute; inset:10px; background:rgba(250,248,239,0.85);
-    border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    z-index:10; opacity:0; pointer-events:none; transition:opacity .25s ease;
-  }
-  .panel.show{ opacity:1; pointer-events:auto; }
-  .panel h2{ margin:0 0 14px; font-size:28px; color:var(--text-dark); }
-  .panel .row{ display:flex; gap:10px; }
-  .panel button{ background:#8F7A66; color:#fff; font-size:14px; font-weight:700; padding:10px 20px; border-radius:7px; }
-  .panel button.secondary{ background:#BBADA0; }
-</style>
-</head>
-<body>
-<div id="app">
-  <header>
-    <div>
-      <h1>2048</h1>
-      <div class="sub">타일을 합쳐서 2048을 만드세요</div>
-    </div>
-    <div class="scores">
-      <div class="score-box">
-        <div class="l">SCORE</div>
-        <div class="n" id="score">0</div>
-      </div>
-      <div class="score-box">
-        <div class="l">BEST</div>
-        <div class="n" id="best">0</div>
-      </div>
-    </div>
-  </header>
+# -*- coding: utf-8 -*-
+"""
+영어단어 비내리기 (워드마스터 DAY 26~50)
+- 하늘에서 영어 단어가 떨어진다 -> 한국어 뜻을 입력하면 사라진다.
+- 실행:  pip install pygame  ->  python word_rain.py
+- 한글이 깨지면 NanumGothic.ttf 를 이 파일과 같은 폴더에 넣어줘.
+"""
+import os
+import random
+import re
+import sys
 
-  <div class="toolbar">
-    <div class="hint">방향키 또는 스와이프로 이동</div>
-    <button id="newGame">새 게임</button>
-  </div>
+import pygame
 
-  <div id="board-wrap">
-    <div id="board">
-      <div class="bg-cell"></div><div class="bg-cell"></div><div class="bg-cell"></div><div class="bg-cell"></div>
-      <div class="bg-cell"></div><div class="bg-cell"></div><div class="bg-cell"></div><div class="bg-cell"></div>
-      <div class="bg-cell"></div><div class="bg-cell"></div><div class="bg-cell"></div><div class="bg-cell"></div>
-      <div class="bg-cell"></div><div class="bg-cell"></div><div class="bg-cell"></div><div class="bg-cell"></div>
-      <div id="tiles"></div>
-      <div class="panel" id="winPanel">
-        <h2>2048 달성! 🎉</h2>
-        <div class="row">
-          <button id="continueBtn">계속하기</button>
-          <button class="secondary" id="restartFromWin">다시 하기</button>
-        </div>
-      </div>
-      <div class="panel" id="overPanel">
-        <h2>게임 오버</h2>
-        <button id="retryBtn">다시 하기</button>
-      </div>
-    </div>
-  </div>
-</div>
+W, H = 960, 720
+FPS = 60
+GROUND_Y = H - 120
+MAX_LIVES = 5
 
-<script>
-(function(){
-  const SIZE = 4;
-  const GAP = 10;
-  const tilesEl = document.getElementById('tiles');
-  const boardEl = document.getElementById('board');
-  const scoreEl = document.getElementById('score');
-  const bestEl = document.getElementById('best');
-  const winPanel = document.getElementById('winPanel');
-  const overPanel = document.getElementById('overPanel');
-  const scoreBox = document.querySelector('.score-box');
+# ============================ 단어 데이터 ============================
+DAYS = {
+    26: [
+        ('reform', '개혁, 개혁하다'),
+        ('deal', '다루다, 대처하다'),
+        ('recruit', '모집하다, 신병'),
+        ('maintain', '유지하다, 지지하다'),
+        ('workshop', '워크숍, 작업장'),
+        ('patient', '환자, 인내심 있는'),
+        ('convention', '집회, 총회, 관습'),
+        ('devastate', '황폐시키다'),
+        ('reap', '수확하다'),
+        ('overlook', '간과하다, 내려다보다'),
+        ('deliver', '배달하다, 전달하다'),
+        ('reject', '거부하다, 거절하다'),
+        ('nourish', '영양분을 주다'),
+        ('bay', '만'),
+        ('stun', '놀라게 하다'),
+        ('particular', '특정한, 개개의'),
+        ('bulletin', '게시, 게시물'),
+        ('fluid', '유동체, 유동적인'),
+        ('affair', '사건, 일'),
+        ('dawn', '새벽, 날이 새다'),
+        ('hostile', '적대적인'),
+        ('characteristic', '특징, 특색, 독특한'),
+        ('respect', '존중하다, 존경'),
+        ('await', '기다리다'),
+        ('concrete', '구체적인, 콘크리트'),
+        ('lease', '임대, 임대하다'),
+        ('racial', '인종의'),
+        ('variable', '변수, 변덕스러운'),
+        ('satisfy', '만족시키다'),
+        ('rule', '지배, 규칙'),
+        ('perseverance', '인내심'),
+        ('fatal', '치명적인'),
+        ('remove', '제거하다'),
+        ('invert', '거꾸로 하다'),
+        ('tension', '긴장, 불안'),
+        ('reign', '통치, 통치하다'),
+        ('creak', '삐걱거리다; 삐걱거리는 소리'),
+        ('startle', '깜짝 놀라게 하다'),
+        ('discourage', '낙담시키다'),
+        ('compensate', '보상하다'),
+    ],
+    27: [
+        ('convert', '전환하다, 바꾸다'),
+        ('strike', '치다, 떠오르다'),
+        ('suppress', '억압하다, 참다'),
+        ('core', '핵심, 핵심의'),
+        ('contribute', '공헌하다'),
+        ('spear', '창'),
+        ('renowned', '유명한, 명성 있는'),
+        ('era', '시대'),
+        ('withdraw', '철수시키다'),
+        ('immigrate', '이주하다'),
+        ('dignity', '존엄'),
+        ('notify', '통지하다, 알리다'),
+        ('animate', '생기 있게 하다'),
+        ('prevent', '막다, 예방하다'),
+        ('bilingual', '2개 국어의'),
+        ('mischief', '장난, 해악'),
+        ('discriminate', '구별하다, 차별하다'),
+        ('exemplify', '예시하다'),
+        ('adhere', '고수하다, 충실하다'),
+        ('judge', '판단하다, 재판관'),
+        ('peculiar', '독특한'),
+        ('sake', '위함, 목적'),
+        ('choke', '질식시키다'),
+        ('folktale', '민간 설화, 전설'),
+        ('simultaneously', '동시에'),
+        ('range', '범위, 정렬시키다'),
+        ('groom', '신랑'),
+        ('supernatural', '초자연적인'),
+        ('tender', '부드러운, 입찰하다'),
+        ('instinct', '본능'),
+        ('gigantic', '거대한'),
+        ('meditate', '명상하다'),
+        ('mow', '베다'),
+        ('evolve', '진화하다, 발전하다'),
+        ('chase', '쫓다, 추적하다'),
+        ('afflict', '괴롭히다'),
+        ('literate', '읽고 쓸 수 있는'),
+        ('coherent', '통일성 있는'),
+        ('intolerable', '참을 수 없는'),
+        ('fountain', '분수, 근원'),
+    ],
+    28: [
+        ('bold', '대담한, 선이 굵은'),
+        ('compliment', '칭찬, 칭찬하다'),
+        ('summit', '꼭대기, 정상'),
+        ('troop', '무리, 떼, 군대'),
+        ('alter', '바꾸다, 변경하다'),
+        ('conceive', '생각해 내다'),
+        ('durability', '내구성'),
+        ('destroy', '파괴하다'),
+        ('shallow', '얇은, 얕은, 천박한'),
+        ('face', '직면하다, 얼굴'),
+        ('promote', '증진하다, 승진시키다'),
+        ('weep', '울다'),
+        ('grasp', '붙잡다, 꽉 쥐기'),
+        ('overall', '전반적인, 전체의'),
+        ('superstition', '미신'),
+        ('colony', '식민지, 공동체'),
+        ('absurd', '불합리한'),
+        ('dormitory', '기숙사'),
+        ('conduct', '수행하다, 실시하다'),
+        ('prone', '~하는 경향이 있는'),
+        ('conceal', '숨기다'),
+        ('retreat', '후퇴하다, 물러서다'),
+        ('compulsive', '강제적인, 강박의'),
+        ('clinic', '전문 병원, 개인 병원'),
+        ('banner', '깃발, 현수막'),
+        ('formulate', '만들어 내다'),
+        ('vow', '맹세, 맹세하다'),
+        ('malnutrition', '영양실조'),
+        ('relate', '관련시키다'),
+        ('undergo', '겪다'),
+        ('boast', '자랑하다, 떠벌리다'),
+        ('neutral', '중립의, 공평한'),
+        ('stain', '얼룩, 얼룩지게 하다'),
+        ('incentive', '자극, 장려책'),
+        ('float', '뜨다, 떠다니다'),
+        ('tendency', '경향, 추세'),
+        ('applause', '박수갈채'),
+        ('wrestle', '싸우다, 씨름하다'),
+        ('sensation', '감각, 느낌, 대사건'),
+        ('Confucian', '공자의, 유교의'),
+    ],
+    29: [
+        ('draft', '원고, 초안'),
+        ('crude', '가공하지 않은'),
+        ('supplement', '보충, 보충하다'),
+        ('velocity', '속도'),
+        ('tame', '길들이다, 길들여진'),
+        ('molecule', '분자'),
+        ('manage', '~을 잘 해내다'),
+        ('dismay', '실망시키다, 걱정'),
+        ('diagnose', '진단하다'),
+        ('adapt', '적응하다, 적응시키다'),
+        ('reservoir', '저장소, 저수지'),
+        ('conform', '순응하다, 일치하다'),
+        ('spacious', '넓은, 훤히 트인'),
+        ('weave', '엮다, 짜다'),
+        ('boundary', '경계, 경계선'),
+        ('motive', '동기(행동의 원인)'),
+        ('prominent', '현저한, 저명한'),
+        ('inferior', '열등한'),
+        ('rigid', '엄격한'),
+        ('archaeology', '고고학'),
+        ('subtract', '빼다'),
+        ('impulse', '충동, 추진'),
+        ('utmost', '최대한의, 최대한도'),
+        ('proficient', '숙달된'),
+        ('accumulate', '모으다, 축적하다'),
+        ('embody', '구현하다, 구체화하다'),
+        ('equity', '공평'),
+        ('violate', '위반하다, 침해하다'),
+        ('ambitious', '야심 있는'),
+        ('intact', '온전한'),
+        ('borrow', '빌리다'),
+        ('attend', '출석하다, 보살피다'),
+        ('trim', '다듬다, 잘라내다'),
+        ('navigate', '길을 찾다, 항해하다'),
+        ('tray', '쟁반'),
+        ('consist', '이루어지다'),
+        ('ceremony', '의식, 식, 의례'),
+        ('attack', '공격하다, 공격'),
+        ('confine', '제한하다, 가두다'),
+        ('dispatch', '급파하다, 발송하다'),
+    ],
+    30: [
+        ('diameter', '지름, 직경'),
+        ('anecdote', '일화, 비화'),
+        ('propriety', '적절성, 예의바름'),
+        ('blame', '비난하다, 책망'),
+        ('earn', '얻다, 벌다'),
+        ('pledge', '약속, 맹세'),
+        ('cost', '들다, 비용, 대가'),
+        ('geology', '지질학'),
+        ('detect', '발견하다, 감지하다'),
+        ('temperate', '온화한, 절제하는'),
+        ('soar', '높이 치솟다'),
+        ('mock', '조롱하다, 가짜의'),
+        ('disclose', '드러내다, 폭로하다'),
+        ('exhibit', '전시하다, 전시품'),
+        ('symptom', '증상'),
+        ('invent', '발명하다'),
+        ('awkward', '어색한, 서투른'),
+        ('grind', '갈다, 빻다'),
+        ('expose', '드러내다, 폭로하다'),
+        ('closet', '벽장'),
+        ('damp', '축축한, 습기'),
+        ('script', '손으로 쓰기, 대본'),
+        ('possibility', '가능성, 가망'),
+        ('discuss', '토론하다'),
+        ('sibling', '형제자매, 동기'),
+        ('lay', '놓다, 낳다'),
+        ('flourish', '번영하다, 번창하다'),
+        ('discharge', '배출, 내보냄'),
+        ('thorough', '철저한'),
+        ('undertake', '수행하다, 떠맡다'),
+        ('panel', '토론자단, 패널'),
+        ('linguistic', '언어의, 언어학의'),
+        ('remedy', '치료, 요법'),
+        ('feed', '먹이를 주다'),
+        ('sophomore', '(대학, 고등) 2학년생의'),
+        ('remind', '상기시키다'),
+        ('sole', '유일한'),
+        ('pillar', '기둥'),
+        ('explode', '폭발하다'),
+        ('illusion', '환상, 착각'),
+    ],
+    31: [
+        ('regret', '후회하다, 한탄하다'),
+        ('submit', '복종하다, 제출하다'),
+        ('divine', '신의, 신성한'),
+        ('revenue', '수입, 수익'),
+        ('corrupt', '부정한, 부패한'),
+        ('separate', '분리하다'),
+        ('factual', '실제의'),
+        ('swamp', '늪지'),
+        ('expedition', '탐험'),
+        ('abnormal', '비정상적인'),
+        ('storage', '저장, 저장고'),
+        ('revive', '되살아나다'),
+        ('consistent', '일관된, 모순이 없는'),
+        ('motion', '운동, 움직임, 몸짓'),
+        ('patent', '특허, 특허권'),
+        ('virtue', '미덕'),
+        ('deadline', '마감 시간, 최종 기한'),
+        ('equator', '적도'),
+        ('cognitive', '인식의, 인지력 있는'),
+        ('hinder', '방해하다'),
+        ('humble', '겸손한, 비천한'),
+        ('bounce', '튀다, 뛰어오르다'),
+        ('imprison', '투옥하다'),
+        ('enlist', '모집하다'),
+        ('hygiene', '위생, 위생학'),
+        ('upcoming', '다가오는'),
+        ('trace', '흔적, 흔적을 쫓다'),
+        ('pulse', '맥박'),
+        ('locate', '~에 위치하다'),
+        ('controversy', '논란, 논쟁'),
+        ('flattery', '아첨'),
+        ('regard', '~으로 여기다, 관계'),
+        ('convenience', '편의, 편리'),
+        ('carbon', '탄소'),
+        ('rush', '돌진하다'),
+        ('contaminate', '오염시키다'),
+        ('external', '외부의'),
+        ('herd', '짐승의 떼'),
+        ('allocate', '할당하다, 배분하다'),
+        ('gorgeous', '아주 멋진, 화려한'),
+    ],
+    32: [
+        ('confess', '고백하다'),
+        ('subjective', '주관적인, 주격의'),
+        ('casual', '우연한, 무심결의'),
+        ('acknowledge', '인정하다'),
+        ('accord', '일치하다, 일치'),
+        ('immense', '막대한'),
+        ('extract', '추출하다, 추출물'),
+        ('sewage', '하수'),
+        ('reconciliation', '화해'),
+        ('explore', '탐험하다'),
+        ('warrant', '보증, 보증하다'),
+        ('complement', '보완하다, 보충물'),
+        ('ceramic', '도자기, 도자기의'),
+        ('license', '면허, 인가'),
+        ('emerge', '나타나다, 드러나다'),
+        ('halt', '정지, 일시 멈춤'),
+        ('pierce', '꿰뚫다'),
+        ('ponder', '심사숙고하다'),
+        ('burglar', '도둑, 빈집털이범'),
+        ('stroke', '뇌졸중, 강타'),
+        ('lottery', '복권, 추첨'),
+        ('certificate', '증명서'),
+        ('transplant', '이식, 이식하다'),
+        ('cluster', '무리, 송이, 성단'),
+        ('plea', '탄원, 간청, 변명'),
+        ('derive', '끌어내다'),
+        ('plague', '전염병'),
+        ('ultrasound', '초음파'),
+        ('deluxe', '호화로운, 사치스러운'),
+        ('convey', '전달하다, 나르다'),
+        ('depth', '깊이'),
+        ('evaporate', '증발하다'),
+        ('lame', '절름발이의'),
+        ('intelligence', '지능, 지성'),
+        ('sour', '신맛이 나는'),
+        ('repetitive', '반복성의'),
+        ('oppress', '억압하다'),
+        ('leftover', '나머지의, 남은'),
+        ('embrace', '포옹, 포옹하다'),
+        ('blade', '칼날'),
+    ],
+    33: [
+        ('abundant', '풍부한'),
+        ('duplicate', '복제품, 복제하다'),
+        ('spoil', '망치다, 상하게 하다'),
+        ('altitude', '고도, 높이'),
+        ('glimpse', '흘긋 봄, 흘긋 보다'),
+        ('blend', '혼합, 혼합하다'),
+        ('swell', '부풀다, 팽창'),
+        ('grief', '큰 슬픔'),
+        ('beverage', '음료'),
+        ('warrior', '용사'),
+        ('shrub', '관목'),
+        ('slice', '얇은 조각, 얇게 썰다'),
+        ('exotic', '이국적인'),
+        ('arrogant', '거만한'),
+        ('vanish', '사라지다'),
+        ('outbreak', '발발, 폭동'),
+        ('predominant', '뛰어난, 우세한'),
+        ('cozy', '아늑한'),
+        ('recommend', '추천하다'),
+        ('auction', '경매, 경매에 부치다'),
+        ('obsess', '강박 관념을 갖다'),
+        ('suitor', '소송인, 구혼자'),
+        ('rational', '이성적인, 합리적인'),
+        ('discreet', '분별 있는, 사려 깊은'),
+        ('pioneer', '개척자, 개척자의'),
+        ('assert', '주장하다, 행사하다'),
+        ('undo', '원상태로 돌리다'),
+        ('inevitable', '피할 수 없는'),
+        ('elaborate', '정교한, 공들인'),
+        ('toss', '던지다'),
+        ('retain', '유지하다'),
+        ('maximize', '최대화하다'),
+        ('buildup', '축적'),
+        ('machinery', '기계'),
+        ('sacrifice', '희생하다, 희생'),
+        ('auditorium', '강당'),
+        ('linger', '오래 머물다'),
+        ('neglect', '무시하다, 소홀'),
+        ('feedback', '반응, 피드백'),
+        ('radioactive', '방사성의'),
+    ],
+    34: [
+        ('impair', '손상시키다'),
+        ('metaphor', '은유, 은유법'),
+        ('dispense', '나누어 주다, 내놓다'),
+        ('bruise', '타박상, 멍'),
+        ('attorney', '변호사'),
+        ('sanitation', '위생'),
+        ('heredity', '유전, 유전 형질'),
+        ('naive', '순진한'),
+        ('shed', '떨구다, 흘리다'),
+        ('metropolitan', '수도권의, 대도시의'),
+        ('shield', '방패, 보호물'),
+        ('ecology', '생태학'),
+        ('record', '기록하다, 녹음하다'),
+        ('expel', '쫓아내다'),
+        ('plow', '쟁기, 쟁기질하다'),
+        ('prolong', '연장하다'),
+        ('fluent', '유창한'),
+        ('margin', '가장자리'),
+        ('induce', '유도하다, 설득하다'),
+        ('interior', '내부, 내부의'),
+        ('ornament', '장식, 장식하다'),
+        ('probe', '조사하다, 탐사선'),
+        ('vibrate', '진동하다, 흔들다'),
+        ('speculate', '사색하다, 투기하다'),
+        ('versus', '~대, ~와 대비하여'),
+        ('pregnant', '임신한'),
+        ('epidemic', '전염병, 유행병'),
+        ('precede', '~에 앞서다'),
+        ('breathtaking', '아슬아슬한'),
+        ('foundation', '기초, 토대, 재단'),
+        ('stimulate', '자극하다, 고무하다'),
+        ('fabric', '구조, 조직, 직물'),
+        ('overturn', '전복시키다, 전복'),
+        ('ripe', '익은'),
+        ('framework', '뼈대, 틀, 체제'),
+        ('urgent', '긴급한, 다급한'),
+        ('settle', '정착하다'),
+        ('conflict', '충돌하다, 갈등'),
+        ('vapor', '증기, 증발하다'),
+        ('tuition', '수업료'),
+    ],
+    35: [
+        ('literature', '문학, 문예, 문헌'),
+        ('loop', '고리'),
+        ('quote', '인용하다'),
+        ('inhale', '들이쉬다'),
+        ('prospect', '가능성, 전망'),
+        ('anchor', '닻, 앵커, 닻을 내리다'),
+        ('reference', '참조, 참고, 언급'),
+        ('compound', '화합물, 합성의'),
+        ('withstand', '견디다'),
+        ('implement', '도구, 실행하다'),
+        ('anonymous', '익명의'),
+        ('collide', '충돌하다'),
+        ('memorial', '기념물, 기념관'),
+        ('vacant', '빈, 비어 있는'),
+        ('technical', '기술의, 전문적인'),
+        ('thrill', '스릴, 전율'),
+        ('wander', '돌아다니다, 방랑'),
+        ('proportion', '비율, 부분'),
+        ('antibiotic', '항생 물질'),
+        ('overtake', '따라잡다'),
+        ('resemble', '닮다, 비슷하다'),
+        ('orchard', '과수원'),
+        ('compassion', '연민, 동정'),
+        ('preoccupation', '몰두, 집착, 선취'),
+        ('paste', '풀, 반죽, 붙이다'),
+        ('provoke', '선동하다, 자극하다'),
+        ('wicked', '사악한'),
+        ('sprain', '삐다'),
+        ('sequence', '순서, 결과, 연속'),
+        ('stool', '의자, 변기'),
+        ('disrupt', '~을 혼란에 빠뜨리다'),
+        ('solitary', '혼자의, 외로운'),
+        ('bury', '파묻다'),
+        ('rust', '녹, 녹슬다'),
+        ('fad', '일시적 유행'),
+        ('referee', '심판, 심판하다'),
+        ('sector', '분야, 지역, 부채꼴'),
+        ('boost', '상승, 밀어올림'),
+        ('gymnastics', '체육, 체조'),
+        ('gross', '엄청난, 총합의'),
+    ],
+    36: [
+        ('last', '계속하다, 끈기'),
+        ('tariff', '관세'),
+        ('beloved', '사랑스러운'),
+        ('lyric', '노래 가사, 서정시'),
+        ('yeast', '효모, 발효하다'),
+        ('skyscraper', '마천루, 고층 건물'),
+        ('inquire', '묻다, 조사하다'),
+        ('spade', '삽'),
+        ('vacuum', '진공, 진공청소기'),
+        ('migrate', '이동하다, 이주하다'),
+        ('spectacle', '광경'),
+        ('surplus', '과잉, 나머지'),
+        ('simulate', '가장하다'),
+        ('integration', '통합, 적분'),
+        ('hypothesis', '가설'),
+        ('affirm', '단언하다'),
+        ('fortress', '(대규모의) 요새'),
+        ('reed', '갈대, 갈대의'),
+        ('cue', '단서, 신호'),
+        ('mole', '사마귀, 점'),
+        ('divide', '나누다, 분리하다'),
+        ('inborn', '타고난'),
+        ('overlap', '겹치다, 중복'),
+        ('fatigue', '피로, 피곤하게 하다'),
+        ('clone', '복제 생물, 클론'),
+        ('peel', '~의 껍질을 벗기다'),
+        ('ease', '진정시키다, 편함'),
+        ('overcome', '압도하다, 극복하다'),
+        ('fund', '기금'),
+        ('bias', '편견'),
+        ('vaccine', '백신'),
+        ('tread', '밟다, 걷다, 밟음'),
+        ('vomit', '토하다'),
+        ('prophecy', '예언'),
+        ('correspond', '일치하다'),
+        ('cling', '달라붙다, 집착하다'),
+        ('mutation', '돌연변이, 변화'),
+        ('obscure', '불분명한'),
+        ('tyrant', '폭군, 전제 군주'),
+        ('odd', '이상한, 홀수의'),
+    ],
+    37: [
+        ('intriguing', '아주 흥미로운'),
+        ('restrain', '억제하다, 구속하다'),
+        ('bundle', '묶음, 꾸러미'),
+        ('enclose', '동봉하다, 에워싸다'),
+        ('insert', '삽입하다'),
+        ('keen', '날카로운, 예민한'),
+        ('constrict', '죄다, 위축시키다'),
+        ('aid', '돕다, 도움, 조력'),
+        ('reputation', '평판, 명성'),
+        ('measurement', '측정, 측량, 치수'),
+        ('originate', '시작되다, 비롯하다'),
+        ('flour', '밀가루'),
+        ('manipulate', '조종하다, 조작하다'),
+        ('experiment', '실험, 실험하다'),
+        ('patriot', '애국자'),
+        ('interchange', '교환, 교차점'),
+        ('intuitive', '직관적인'),
+        ('garment', '의복'),
+        ('spontaneous', '자발적인'),
+        ('vertical', '수직의'),
+        ('testify', '증언하다, 증명하다'),
+        ('mentor', '조언자'),
+        ('vivid', '생생한'),
+        ('pasture', '목초지, 목장'),
+        ('crust', '껍질, 지각'),
+        ('comprehend', '이해하다, 포함하다'),
+        ('plunge', '뛰어들다, 던져 넣다'),
+        ('nasty', '더러운, 불쾌한'),
+        ('appreciate', '이해하다, 감상하다'),
+        ('emigrate', '이주하다'),
+        ('deed', '행위, 업적'),
+        ('skinny', '피골이 상접한, 마른'),
+        ('grill', '석쇠, 석쇠로 굽다'),
+        ('canal', '수로, 운하'),
+        ('curse', '저주, 저주하다'),
+        ('adverse', '거스르는, 반대의'),
+        ('censorship', '검열'),
+        ('forehead', '이마'),
+        ('appetite', '식욕, 욕망, 욕구'),
+        ('flaw', '결점, 흠'),
+    ],
+    38: [
+        ('outgoing', '외향적인'),
+        ('verbal', '말의, 구두의'),
+        ('liberate', '해방시키다'),
+        ('segregation', '인종 차별, 분리'),
+        ('advance', '나아가게 하다'),
+        ('contemplate', '~을 숙고하다'),
+        ('underlying', '밑에 놓인'),
+        ('academic', '학문적인, 학구적인'),
+        ('stem', '생기다, 일어나다'),
+        ('irrigation', '관개'),
+        ('consecutive', '연속적인, 일관된'),
+        ('superficial', '표면상의, 피상적인'),
+        ('refuge', '피난, 피난처'),
+        ('swear', '맹세하다, 욕하다'),
+        ('allergy', '알레르기'),
+        ('norm', '규범, 기준, 표준'),
+        ('endeavor', '노력, 노력하다'),
+        ('erect', '세우다, 똑바로 선'),
+        ('feminine', '여성의, 여성스러운'),
+        ('drowsy', '졸리는'),
+        ('inspect', '검사하다, 점검하다'),
+        ('carriage', '마차, 탈것'),
+        ('primitive', '원시의, 초기의'),
+        ('compress', '압축하다'),
+        ('govern', '통치하다, 지배하다'),
+        ('cemetery', '공동묘지'),
+        ('shatter', '산산이 부서지다'),
+        ('exaggerate', '과장하다'),
+        ('random', '무작위의, 임의의'),
+        ('feast', '즐겁게 하다'),
+        ('commemorate', '기념하다'),
+        ('steep', '가파른, 경사가 급한'),
+        ('multitask', '다중작업을 하다'),
+        ('toxic', '유독한, 중독의'),
+        ('stare', '응시하다, 노려보다'),
+        ('chronic', '만성적인, 장기간의'),
+        ('designate', '지정하다, 가리키다'),
+        ('dramatic', '연극의, 극적인'),
+        ('intense', '강렬한'),
+        ('propaganda', '선전 활동, 선전'),
+    ],
+    39: [
+        ('numerous', '다수의, 수많은'),
+        ('shiver', '떨림, 떨다'),
+        ('retarded', '발달이 뒤진'),
+        ('ongoing', '계속되는, 진행 중인'),
+        ('mention', '언급하다, 언급'),
+        ('executive', '집행의, 경영의'),
+        ('chaos', '혼돈, 무질서'),
+        ('microscope', '현미경'),
+        ('belonging', '소유물, 소지품'),
+        ('vulnerable', '취약한'),
+        ('implication', '함축, 암시'),
+        ('alley', '오솔길, 골목길'),
+        ('authentic', '진짜의, 진정한'),
+        ('compel', '강요하다'),
+        ('transition', '변천, 과도기'),
+        ('index', '지수, 색인'),
+        ('incline', '내키게 하다'),
+        ('attain', '달성하다'),
+        ('innate', '천부적인, 본질적인'),
+        ('ingenuity', '솜씨, 독창력'),
+        ('upset', '마음이 상한'),
+        ('stretch', '늘이다, 뻗다'),
+        ('seize', '붙잡다, 이해하다'),
+        ('screw', '나사'),
+        ('savage', '야만적인, 잔인한'),
+        ('province', '지방, 도, 분야'),
+        ('coordinate', '조정하다, 동등한'),
+        ('deficient', '부족한, 불완전한'),
+        ('privilege', '특권, 특권을 주다'),
+        ('preview', '미리 보기, 예고편'),
+        ('equivalent', '동등한, 상당하는'),
+        ('shelter', '피난하다, 보호하다'),
+        ('throughout', '도처에'),
+        ('outlaw', '금지하다, 무법자'),
+        ('squeeze', '짜내다'),
+        ('breakthrough', '비약적 발전, 돌파구'),
+        ('consent', '동의, 허락'),
+        ('orphan', '고아'),
+        ('negotiate', '협상하다'),
+        ('nuisance', '귀찮은 사람'),
+    ],
+    40: [
+        ('recipe', '조리법, 비법'),
+        ('deceive', '속이다'),
+        ('sweep', '휩쓸다, 청소하다'),
+        ('profile', '옆모습, 인물 소개'),
+        ('enterprise', '기업, 사업'),
+        ('successive', '연속되는, 상속의'),
+        ('paradox', '역설, 패러독스'),
+        ('surpass', '능가하다'),
+        ('correlation', '상관관계, 상호 관련'),
+        ('magnitude', '거대함, 중요성'),
+        ('aesthetics', '미학'),
+        ('earnest', '진지한, 진심'),
+        ('tremble', '떨다'),
+        ('slaughter', '도살하다, 대학살'),
+        ('surrender', '넘겨주다, 포기하다'),
+        ('philosophy', '철학'),
+        ('deplete', '고갈시키다'),
+        ('admire', '감탄하다, 존경하다'),
+        ('starvation', '아사, 기아, 궁핍'),
+        ('summon', '소집하다, 소환하다'),
+        ('afford', '~할 여유가 있다'),
+        ('blunt', '무뚝뚝한, 둔감한'),
+        ('sprint', '단거리 경주'),
+        ('passerby', '통행인'),
+        ('tense', '팽팽한, 긴장한'),
+        ('boil', '끓다, 삶다'),
+        ('timber', '목재'),
+        ('collaborate', '협력하다'),
+        ('stance', '서 있는 자세, 태도'),
+        ('blow', '불다, 바람에 날리다'),
+        ('ballot', '투표, 투표용지'),
+        ('division', '분할, 나누기'),
+        ('acquaintance', '아는 사이, 교제'),
+        ('amplify', '확대하다, 증폭시키다'),
+        ('contradict', '부정하다, 반박하다'),
+        ('burst', '터뜨리다, 파열, 폭발'),
+        ('cast', '내던지다, 발하다'),
+        ('falsify', '잘못을 입증하다'),
+        ('psychic', '초능력이 있는'),
+        ('paddle', '노, 노를 젓다'),
+    ],
+    41: [
+        ('steer', '조종하다, 인도하다'),
+        ('affection', '애정, 감정'),
+        ('bid', '말하다, 명령하다'),
+        ('compost', '혼합물, 퇴비'),
+        ('temperament', '기질, 성질'),
+        ('rent', '임대하다, 집세'),
+        ('shred', '갈기갈기 찢다'),
+        ('unpredictable', '예측할 수 없는'),
+        ('tribute', '감사의 표시, 증정물'),
+        ('artery', '동맥, 간선 도로'),
+        ('inherent', '내재하는, 타고난'),
+        ('harass', '괴롭히다, 희롱하다'),
+        ('narrative', '이야기, 서술'),
+        ('assemble', '모으다, 조립하다'),
+        ('spike', '대못, 대못을 박다'),
+        ('sneak', '살금살금 움직이다'),
+        ('sophisticated', '세련된, 정교한'),
+        ('handle', '다루다'),
+        ('enlightenment', '계몽, 개화, 깨달음'),
+        ('cosmetic', '화장품, 미용의'),
+        ('gracious', '상냥한, 우아한'),
+        ('aspire', '열망하다, 동경하다'),
+        ('obstruct', '막다, 방해하다'),
+        ('patrol', '순찰, 순찰병'),
+        ('accelerate', '가속하다, 촉진하다'),
+        ('heatstroke', '일사병, 열사병'),
+        ('oval', '달걀 모양의'),
+        ('veteran', '경험이 많은, 베테랑'),
+        ('trail', '오솔길, 자국'),
+        ('vocation', '직업, 천직'),
+        ('vegetarian', '채식주의자, 채식의'),
+        ('decode', '해독하다'),
+        ('fellow', '사나이, 동료'),
+        ('mandate', '명령하다, 위임하다'),
+        ('perish', '죽다, 소멸하다'),
+        ('inseparable', '불가분의'),
+        ('domain', '영역, 영토, 분야'),
+        ('statesman', '정치가'),
+        ('connotation', '함축, 내포'),
+        ('stereotype', '인습, 고정관념'),
+    ],
+    42: [
+        ('hollow', '속이 빈, 오목한'),
+        ('structural', '구조의, 조직의'),
+        ('mortgage', '저당, 주택 융자'),
+        ('inject', '주사하다, 도입하다'),
+        ('crisis', '위기, 중대 국면'),
+        ('latter', '나중 쪽의, 후자의'),
+        ('illuminate', '밝게 비추다'),
+        ('mimic', '모방하다, 모조의'),
+        ('unearth', '발굴하다, 발견하다'),
+        ('wail', '울부짖다, 울부짖음'),
+        ('shudder', '떨다, 몸서리치다'),
+        ('stride', '성큼성큼 걷다'),
+        ('applicant', '신청자, 지원자'),
+        ('disprove', '오류를 증명하다'),
+        ('disturb', '방해하다'),
+        ('hemisphere', '반구체, 반구'),
+        ('recur', '재발하다, 되풀이하다'),
+        ('elastic', '탄력 있는'),
+        ('counterpart', '상대, 대응하는 것'),
+        ('stubborn', '완고한, 고집이 센'),
+        ('suicide', '자살'),
+        ('lure', '유혹하다, 매력'),
+        ('underprivileged', '권리가 적은'),
+        ('morale', '사기, 의욕'),
+        ('examine', '검사하다, 진찰하다'),
+        ('compromise', '타협하다, 타협'),
+        ('foremost', '주요한, 으뜸가는'),
+        ('precaution', '조심, 예방 조치'),
+        ('torture', '고문, 고문하다'),
+        ('entrust', '위임하다, 위탁하다'),
+        ('sway', '흔들림, 흔들리다'),
+        ('religious', '종교의, 종교적인'),
+        ('obligation', '의무, 계약, 채무'),
+        ('pest', '해충, 역병, 귀찮은 것'),
+        ('subdue', '정복하다, 진압하다'),
+        ('incorporate', '법인회사로 만들다'),
+        ('regime', '정권, 제도'),
+        ('terminate', '끝내다, 종결짓다'),
+        ('rebel', '반역자'),
+        ('meanwhile', '한편, 그 동안에'),
+    ],
+    43: [
+        ('folklore', '민속, 민속 신앙'),
+        ('vast', '막대한, 방대한'),
+        ('preliminary', '예비의, 임시의'),
+        ('theft', '도둑질, (야구) 도루'),
+        ('painkiller', '진통제'),
+        ('amend', '수정하다, 고치다'),
+        ('recess', '휴식, 휴업'),
+        ('exploit', '이용하다, 착취하다'),
+        ('autonomy', '자치, 자율'),
+        ('outfit', '옷, 장비, 공급하다'),
+        ('mourn', '슬퍼하다, 애도하다'),
+        ('evoke', '일깨우다'),
+        ('burden', '짐, 부담'),
+        ('latitude', '위도, 위선'),
+        ('patch', '헝겊 조각, 좁은 땅'),
+        ('maternal', '어머니의, 모계의'),
+        ('pharmacy', '약국, 약학'),
+        ('marine', '해양의, 바다의'),
+        ('prestigious', '명성이 있는, 고급의'),
+        ('friction', '마찰, 의견 충돌'),
+        ('defend', '방어하다, 수비하다'),
+        ('fraud', '사기, 속임, 사기꾼'),
+        ('easygoing', '태평스러운, 안이한'),
+        ('insomnia', '불면증'),
+        ('intermediate', '중간의, 중간물'),
+        ('transport', '수송하다, 수송'),
+        ('paradigm', '패러다임, 이론적 틀'),
+        ('charge', '요금을 청구하다'),
+        ('rapid', '빠른, 신속한'),
+        ('premature', '너무 이른, 조숙한, 조산의'),
+        ('pollute', '오염시키다, 더럽히다'),
+        ('altruism', '이타주의'),
+        ('fiber', '섬유(질)'),
+        ('irony', '반어법, 아이러니'),
+        ('spectator', '관객, 구경꾼'),
+        ('medieval', '중세의'),
+        ('analogy', '유추, 비슷함'),
+        ('snatch', '잡아채다, 날치기하다'),
+        ('anthropology', '인류학'),
+        ('outline', '개요를 말하다, 윤곽'),
+    ],
+    44: [
+        ('slogan', '선전 문구, 슬로건'),
+        ('composure', '침착, 평정'),
+        ('incurable', '불치의, 구제 불능의'),
+        ('parallel', '평행의, 유사한'),
+        ('indulge', '탐닉하다, 충족시키다'),
+        ('meadow', '목초지, 초원'),
+        ('venture', '모험하다, 모험'),
+        ('deflect', '빗나가다, 막다'),
+        ('adorable', '귀여운, 사랑스러운'),
+        ('complacent', '만족해하는'),
+        ('explicit', '명백한, 분명한'),
+        ('sturdy', '견고한, 강건한'),
+        ('primate', '영장류'),
+        ('patron', '후원자, 단골 손님'),
+        ('endure', '참다, 인내하다'),
+        ('manifest', '명백하게 하다'),
+        ('imperial', '제국의, 황제의'),
+        ('duration', '지속, 지속 기간'),
+        ('populate', '거주시키다'),
+        ('frugal', '검소한, 절약하는'),
+        ('registration', '기재, 등록'),
+        ('rejoice', '크게 기뻐하다'),
+        ('comprise', '포함하다, 구성하다'),
+        ('textile', '직물의, 방직의'),
+        ('lurk', '숨다, 잠복하다'),
+        ('humanity', '인류, 인간성'),
+        ('approximate', '~에 가까워지다'),
+        ('revenge', '복수, 복수하다'),
+        ('sarcastic', '비꼬는, 풍자적인'),
+        ('terrain', '지형, 지역, 분야'),
+        ('toll', '사용세, 통행료'),
+        ('warfare', '전쟁, 교전 상태'),
+        ('mortal', '죽을 운명의'),
+        ('spouse', '배우자'),
+        ('crispy', '바삭바삭한'),
+        ('statistical', '통계적인, 통계상의'),
+        ('rubbish', '쓰레기, 폐기물'),
+        ('stimulus', '자극, 격려'),
+        ('clumsy', '어색한, 서투른'),
+        ('subsequent', '그 후의'),
+    ],
+    45: [
+        ('relevant', '관련된, 적절한'),
+        ('predator', '포식자, 약탈자'),
+        ('drain', '물을 빼내다'),
+        ('countless', '셀 수 없는, 무수한'),
+        ('condense', '농축하다, 요약하다'),
+        ('post', '붙이다, 우편'),
+        ('poise', '균형을 잡다, 평정'),
+        ('disciple', '제자, 문하생'),
+        ('gust', '돌풍, 질풍'),
+        ('collective', '집합적인, 집단적인'),
+        ('scope', '범위, 시야'),
+        ('compatible', '양립할 수 있는'),
+        ('border', '가장자리, 국경'),
+        ('frontier', '국경, 국경의'),
+        ('withhold', '억누르다, 억제하다'),
+        ('verdict', '판결, 결정'),
+        ('stall', '마구간, 우리, 핑계'),
+        ('apparatus', '장치, 기구, 조직'),
+        ('hail', '싸락눈, 우박'),
+        ('outburst', '분출, 폭발'),
+        ('vanity', '허영심, 허무함'),
+        ('firsthand', '직접, 바로, 직접의'),
+        ('obesity', '비만, 비대'),
+        ('dilemma', '진퇴양난, 딜레마'),
+        ('render', '~이 되게 하다'),
+        ('indispensable', '필수 불가결한'),
+        ('outdated', '시대에 뒤진, 구식의'),
+        ('bother', '일부러 ~하다'),
+        ('counteract', '중화시키다'),
+        ('static', '정적인, 고정된'),
+        ('sustain', '지탱하다, 유지하다'),
+        ('posture', '태도, 자세'),
+        ('discourse', '담화, 강연'),
+        ('bribe', '뇌물, 뇌물을 주다'),
+        ('juggle', '잘 처리하다'),
+        ('perspiration', '땀, 노력'),
+        ('retention', '보유, 기억'),
+        ('valiant', '용감한, 용맹스런'),
+        ('distress', '고민, 고통'),
+        ('nursery', '육아실, 탁아소'),
+    ],
+    46: [
+        ('encircle', '에워싸다, 둘러싸다'),
+        ('notion', '개념, 의견'),
+        ('disgust', '혐오감, 역겹게 하다'),
+        ('fragment', '일부분, 부서진 조각'),
+        ('oversee', '감독하다, 감사하다'),
+        ('creep', '기다, 포복, 서행'),
+        ('clarify', '명백히 하다'),
+        ('contagious', '전염성의, 감염성의'),
+        ('deterioration', '악화, 하락'),
+        ('currency', '통화, 통용'),
+        ('janitor', '문지기, 관리인'),
+        ('blush', '얼굴을 붉히다'),
+        ('intervene', '사이에 끼어들다'),
+        ('nomad', '유목민, 방랑자'),
+        ('cuisine', '요리, 요리법'),
+        ('dare', '감히 ~하다'),
+        ('solvent', '용해력이 있는'),
+        ('cultivate', '경작하다, 양성하다'),
+        ('ascent', '상승, 오름'),
+        ('advocate', '옹호자, 지지자'),
+        ('spur', '자극, 고무'),
+        ('discern', '식별하다, 분별하다'),
+        ('scheme', '계획, 체계'),
+        ('weigh', '무게를 달다'),
+        ('publicity', '널리 알려짐, 명성'),
+        ('declare', '선언하다'),
+        ('brisk', '활발한, 번창하는'),
+        ('exile', '망명, 망명자'),
+        ('whisper', '속삭이다, 속삭임'),
+        ('fling', '내던지다, 돌진하다'),
+        ('deviation', '변경, 일탈'),
+        ('dissolve', '용해하다, 해산하다'),
+        ('constraint', '강제, 압박'),
+        ('itch', '가려움, 가렵다'),
+        ('unanimous', '만장일치의, 합의의'),
+        ('delude', '속이다'),
+        ('dehydrate', '탈수하다, 건조시키다'),
+        ('underneath', '~의 아래에, 밑에'),
+        ('metabolism', '물질대사, 신진대사'),
+        ('appoint', '임명하다, 정하다'),
+    ],
+    47: [
+        ('pinch', '~을 꼬집다, 집다'),
+        ('punctual', '시간을 지키는'),
+        ('arbitrary', '임의적인, 독단적인'),
+        ('catastrophe', '대참사, 큰 재앙'),
+        ('exert', '쓰다, 발휘하다'),
+        ('aviate', '비행하다, 조종하다'),
+        ('headquarters', '본부'),
+        ('rectangular', '직사각형의, 직각의'),
+        ('delegate', '파견하다, 사절, 대표'),
+        ('elect', '선출하다'),
+        ('thorn', '가시, 괴로움의 원인'),
+        ('empathize', '공감하다'),
+        ('expertise', '전문 지식'),
+        ('renovate', '~을 새롭게 하다'),
+        ('wrench', '렌치, 비틀기'),
+        ('interval', '간격, 틈'),
+        ('degrade', '저하시키다'),
+        ('retort', '반박, 말대꾸'),
+        ('asthma', '천식'),
+        ('realm', '왕국, 영역'),
+        ('segment', '부분, 분할하다'),
+        ('coexist', '공존하다'),
+        ('hospitality', '환대, 후한 대접'),
+        ('estate', '소유지, 재산'),
+        ('displace', '옮겨 놓다, 대신하다'),
+        ('cripple', '~을 불구로 만들다'),
+        ('drawback', '문제점, 장애'),
+        ('tactics', '방안, 전술'),
+        ('dread', '공포, 무서워하다'),
+        ('dispute', '논쟁, 분쟁'),
+        ('console', '위로하다'),
+        ('stack', '더미, 쌓아올림'),
+        ('cynical', '냉소적인, 비꼬는'),
+        ('reprove', '꾸짖다, 책망하다'),
+        ('verify', '검증하다, 입증하다'),
+        ('engross', '열중하게 하다'),
+        ('bulk', '크기, 부피, 대부분'),
+        ('despise', '경멸하다'),
+        ('manuscript', '손으로 쓴 것, 원고'),
+        ('flee', '달아나다, 도망치다'),
+    ],
+    48: [
+        ('prehistoric', '선사 시대의'),
+        ('barrel', '통, (석유) 1배럴'),
+        ('predecessor', '앞서 있었던 것'),
+        ('alienate', '소외시키다, 멀리하다'),
+        ('proclaim', '선언하다, 증명하다'),
+        ('subordinate', '하급의, 부차적인'),
+        ('furnish', '제공하다, 갖추다'),
+        ('fume', '연기, 연기 나다'),
+        ('staple', '주요한, 주요 산물'),
+        ('dimension', '크기, 치수, 규모'),
+        ('dispersal', '분산, 확산'),
+        ('eloquent', '웅변의'),
+        ('innermost', '가장 깊숙한'),
+        ('hazardous', '위험한, 모험적인'),
+        ('skull', '두개골'),
+        ('detergent', '세제'),
+        ('brutal', '야만적인, 잔혹한'),
+        ('rash', '발진, 뾰루지'),
+        ('bypass', '우회하다, 우회로'),
+        ('accommodate', '수용하다'),
+        ('tact', '재치, 기지'),
+        ('monotonous', '단조로운, 지루한'),
+        ('perpetual', '영구의, 끊임없는'),
+        ('eligible', '적격의, 적임자'),
+        ('legacy', '유산'),
+        ('melancholy', '우울한, 우울함'),
+        ('simplicity', '간단, 단순, 소박'),
+        ('hierarchy', '계급, 위계'),
+        ('reside', '거주하다, 속하다'),
+        ('enact', '법제화하다, 제정하다'),
+        ('burnout', '극도의 피로, 쇠진'),
+        ('legitimate', '타당한, 정당한'),
+        ('shuffle', '질질 끌며 걷다'),
+        ('summarize', '요약하다'),
+        ('eject', '쫓아내다, 배출하다'),
+        ('intersection', '교차, 횡단'),
+        ('quest', '탐색, 탐구'),
+        ('linear', '직선의, 길이의'),
+        ('landslide', '산사태'),
+        ('plausible', '그럴듯한'),
+    ],
+    49: [
+        ('endow', '부여하다, 기부하다'),
+        ('extrinsic', '외적인, 외부의'),
+        ('merge', '합병하다'),
+        ('frantic', '광란의, 미친'),
+        ('moan', '신음, 신음하다'),
+        ('merchandise', '상품'),
+        ('respectively', '각각, 저마다'),
+        ('yearn', '그리워하다'),
+        ('conviction', '확신, 유죄 판결'),
+        ('stout', '뚱뚱한, 튼튼한'),
+        ('reckon', '세다, 계산하다'),
+        ('enchant', '매혹하다'),
+        ('entail', '수반하다, 의미하다'),
+        ('demolish', '파괴하다, 폐지하다'),
+        ('degenerate', '퇴보하다, 타락하다'),
+        ('sentiment', '감상, 정서'),
+        ('offspring', '자식, 새끼, 성과'),
+        ('detest', '혐오하다, 미워하다'),
+        ('tackle', '다루다, 도구, 태클'),
+        ('defy', '물리치다, 반항하다'),
+        ('inference', '추론'),
+        ('refraction', '굴절'),
+        ('dusk', '땅거미, 어스름'),
+        ('detach', '떼어 내다, 분리하다'),
+        ('antagonist', '적대자, 라이벌'),
+        ('thrust', '밀다, 밀치다'),
+        ('creed', '신념, 교의'),
+        ('equate', '동일시하다, 일치하다'),
+        ('misplace', '잘못 두다'),
+        ('auditory', '귀의, 청각의'),
+        ('missionary', '선교사'),
+        ('cosmopolitan', '세계적인, 국제인'),
+        ('secondhand', '중고의, 간접적인'),
+        ('multiple', '복합적인, 다수의'),
+        ('embed', '깊숙이 박다'),
+        ('propel', '나아가게 하다'),
+        ('reptile', '파충류'),
+        ('erosion', '부식, 침식'),
+        ('feat', '위업, 공적'),
+        ('utensil', '가정용 기구, 도구'),
+    ],
+    50: [
+        ('penetrate', '침투하다, 꿰뚫다'),
+        ('intrude', '방해하다, 침범하다'),
+        ('notable', '주목할 만한'),
+        ('grumble', '불평하다, 불평'),
+        ('landfill', '쓰레기 매립지'),
+        ('scrutiny', '조사'),
+        ('reckless', '부주의한, 무모한'),
+        ('synthetic', '합성의'),
+        ('productive', '생산적인, 다산의'),
+        ('outset', '착수, 시작'),
+        ('peril', '위험, 위기'),
+        ('pitfall', '함정, 위험'),
+        ('kidnap', '유괴, 납치하다'),
+        ('liable', '책임이 있는'),
+        ('insane', '정신 이상의'),
+        ('rage', '격노'),
+        ('radius', '반지름'),
+        ('hybrid', '혼합, 잡종'),
+        ('uncover', '폭로하다, 알아내다'),
+        ('limb', '사지, 팔다리'),
+        ('setback', '좌절, 차질'),
+        ('prudent', '신중한, 빈틈없는'),
+        ('solidify', '굳어지다, 굳히다'),
+        ('grudge', '원한, 유감'),
+        ('lessen', '줄다'),
+        ('tangle', '얽히게 하다'),
+        ('subsidy', '보조금, 장려금'),
+        ('ambiguous', '애매모호한'),
+        ('enthusiasm', '열광, 열정, 열의'),
+        ('bankruptcy', '파산'),
+        ('pollination', '수분'),
+        ('prosper', '번영하다, 번창하다'),
+        ('phase', '단계, 상, 면, 양상'),
+        ('veterinarian', '수의사'),
+        ('counterattack', '반격, 역습'),
+        ('cumulative', '누적되는, 점증적인'),
+        ('infrastructure', '사회 기반 시설'),
+        ('wound', '부상하게 하다'),
+        ('discrete', '분리된, 별개의'),
+        ('fluctuation', '변동, 오르내림'),
+    ],
+}
+# ====================================================================
 
-  const COLORS = {
-    2:['#EEE4DA','#776E65'], 4:['#EDE0C8','#776E65'],
-    8:['#F2B179','#F9F6F2'], 16:['#F59563','#F9F6F2'],
-    32:['#F67C5F','#F9F6F2'], 64:['#F65E3B','#F9F6F2'],
-    128:['#EDCF72','#F9F6F2'], 256:['#EDCC61','#F9F6F2'],
-    512:['#EDC850','#F9F6F2'], 1024:['#EDC53F','#F9F6F2'],
-    2048:['#EDC22E','#F9F6F2']
-  };
 
-  let idSeq = 1;
-  function Tile(pos, value){
-    this.id = idSeq++;
-    this.r = pos.r; this.c = pos.c;
-    this.value = value || 2;
-    this.previousPosition = null;
-    this.mergedFrom = null;
-  }
-  Tile.prototype.savePosition = function(){ this.previousPosition = { r:this.r, c:this.c }; };
-  Tile.prototype.updatePosition = function(pos){ this.r = pos.r; this.c = pos.c; };
+# ------------------------------ 폰트 -------------------------------
+def find_font_path():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for name in ("NanumGothic.ttf", "NanumGothic-Regular.ttf", "NotoSansKR.ttf", "font.ttf"):
+        p = os.path.join(here, name)
+        if os.path.exists(p):
+            return p
+    p = pygame.font.match_font(
+        "malgungothic,malgun gothic,applesdgothicneo,applegothic,nanumgothic,"
+        "nanumbarungothic,notosanscjkkr,notosanskr,notosanscjksc,notosanscjk,gulim,dotum"
+    )
+    if p:
+        return p
+    for p in (
+        "C:/Windows/Fonts/malgun.ttf",
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
+        "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    ):
+        if os.path.exists(p):
+            return p
+    return None
 
-  function Grid(){ this.cells = this.empty(); }
-  Grid.prototype.empty = function(){
-    const cells = [];
-    for(let r=0;r<SIZE;r++){ cells[r]=[]; for(let c=0;c<SIZE;c++) cells[r][c]=null; }
-    return cells;
-  };
-  Grid.prototype.eachCell = function(cb){
-    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++) cb(r,c,this.cells[r][c]);
-  };
-  Grid.prototype.availableCells = function(){
-    const list = [];
-    this.eachCell((r,c,t)=>{ if(!t) list.push({r,c}); });
-    return list;
-  };
-  Grid.prototype.cellsAvailable = function(){ return this.availableCells().length > 0; };
-  Grid.prototype.randomAvailableCell = function(){
-    const cells = this.availableCells();
-    return cells[Math.floor(Math.random()*cells.length)];
-  };
-  Grid.prototype.withinBounds = function(pos){ return pos.r>=0 && pos.r<SIZE && pos.c>=0 && pos.c<SIZE; };
-  Grid.prototype.cellContent = function(pos){ return this.withinBounds(pos) ? this.cells[pos.r][pos.c] : null; };
-  Grid.prototype.insertTile = function(tile){ this.cells[tile.r][tile.c] = tile; };
-  Grid.prototype.removeTile = function(tile){ this.cells[tile.r][tile.c] = null; };
 
-  let grid, score, best, over, won, keepPlaying;
+FONT_PATH = None
+_fonts = {}
 
-  function loadBest(){ try{ return parseInt(localStorage.getItem('g2048_best')||'0',10)||0; }catch(e){ return 0; } }
-  function saveBest(v){ try{ localStorage.setItem('g2048_best', String(v)); }catch(e){} }
 
-  function setup(){
-    grid = new Grid();
-    score = 0; over = false; won = false; keepPlaying = false;
-    best = loadBest();
-    winPanel.classList.remove('show');
-    overPanel.classList.remove('show');
-    addRandomTile(); addRandomTile();
-    actuate(0);
-  }
+def F(size, bold=False):
+    key = (size, bold)
+    if key not in _fonts:
+        f = pygame.font.Font(FONT_PATH, size) if FONT_PATH else pygame.font.SysFont(None, size)
+        f.set_bold(bold)
+        _fonts[key] = f
+    return _fonts[key]
 
-  function addRandomTile(){
-    if(!grid.cellsAvailable()) return;
-    const value = Math.random() < 0.9 ? 2 : 4;
-    const cell = grid.randomAvailableCell();
-    grid.insertTile(new Tile(cell, value));
-  }
 
-  function prepareTiles(){
-    grid.eachCell((r,c,tile)=>{ if(tile){ tile.mergedFrom = null; tile.savePosition(); } });
-  }
+# --------------------------- 정답 판정 -----------------------------
+def norm(s):
+    s = re.sub(r"\([^)]*\)", "", s)
+    s = s.replace("~", "")
+    return re.sub(r"\s+", "", s)
 
-  function moveTile(tile, cell){
-    grid.cells[tile.r][tile.c] = null;
-    grid.cells[cell.r][cell.c] = tile;
-    tile.updatePosition(cell);
-  }
 
-  function getVector(dir){
-    return { up:{r:-1,c:0}, down:{r:1,c:0}, left:{r:0,c:-1}, right:{r:0,c:1} }[dir];
-  }
-  function buildTraversals(vector){
-    const r=[0,1,2,3], c=[0,1,2,3];
-    if(vector.r===1) r.reverse();
-    if(vector.c===1) c.reverse();
-    return {r,c};
-  }
-  function findFarthestPosition(cell, vector){
-    let previous;
-    do{
-      previous = cell;
-      cell = { r: previous.r+vector.r, c: previous.c+vector.c };
-    } while(grid.withinBounds(cell) && !grid.cellContent(cell));
-    return { farthest: previous, next: cell };
-  }
-  function positionsEqual(a,b){ return a.r===b.r && a.c===b.c; }
+def answers_of(ko):
+    base = re.sub(r"\([^)]*\)", "", ko)
+    out = set()
+    for part in re.split(r"[,;/]", base):
+        part = part.strip()
+        if not part:
+            continue
+        out.add(norm(part))
+        if part.startswith("~"):  # '~을 잘 해내다' -> '잘 해내다'도 인정
+            out.add(norm(re.sub(r"^~\s*(으로|을|를|에|와|이|가)\s*", "", part)))
+    out.discard("")
+    return out
 
-  function tileMatchesAvailable(){
-    let found = false;
-    grid.eachCell((r,c,tile)=>{
-      if(found || !tile) return;
-      [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc])=>{
-        const other = grid.cellContent({r:r+dr,c:c+dc});
-        if(other && other.value === tile.value) found = true;
-      });
-    });
-    return found;
-  }
-  function movesAvailable(){ return grid.cellsAvailable() || tileMatchesAvailable(); }
 
-  function move(dir){
-    if(over || (won && !keepPlaying)) return;
-    const vector = getVector(dir);
-    const traversals = buildTraversals(vector);
-    let moved = false;
-    let gained = 0;
+# ------------------------------ 객체 -------------------------------
+class Drop:
+    def __init__(self, en, ko, level):
+        self.en, self.ko = en, ko
+        self.ans = answers_of(ko)
+        txt = F(30, True).render(en, True, (20, 24, 40))
+        self.w, self.h = txt.get_width() + 28, txt.get_height() + 12
+        self.surf = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        pygame.draw.rect(self.surf, (190, 225, 255), self.surf.get_rect(), border_radius=14)
+        pygame.draw.rect(self.surf, (90, 150, 220), self.surf.get_rect(), 2, border_radius=14)
+        self.surf.blit(txt, (14, 6))
+        self.x = random.randint(20, W - self.w - 20)
+        self.y = -self.h
+        self.vy = random.uniform(32, 50) + level * 7
 
-    prepareTiles();
+    def update(self, dt):
+        self.y += self.vy * dt
 
-    traversals.r.forEach(r=>{
-      traversals.c.forEach(c=>{
-        const cell = {r,c};
-        const tile = grid.cellContent(cell);
-        if(!tile) return;
-        const positions = findFarthestPosition(cell, vector);
-        const next = grid.cellContent(positions.next);
+    def draw(self, scr):
+        scr.blit(self.surf, (self.x, self.y))
 
-        if(next && next.value === tile.value && !next.mergedFrom){
-          const merged = new Tile(positions.next, tile.value*2);
-          merged.mergedFrom = [tile, next];
-          grid.insertTile(merged);
-          grid.removeTile(tile);
-          tile.updatePosition(positions.next);
-          gained += merged.value;
-          if(merged.value === 2048 && !won) won = true;
-          moved = true;
-        } else {
-          moveTile(tile, positions.farthest);
-          if(!positionsEqual(cell, positions.farthest)) moved = true;
-        }
-      });
-    });
+    @property
+    def bottom(self):
+        return self.y + self.h
 
-    if(moved){
-      score += gained;
-      addRandomTile();
-      if(!movesAvailable()) over = true;
-      actuate(gained);
-    }
-  }
 
-  function cellSize(){
-    const rect = boardEl.getBoundingClientRect();
-    const inner = rect.width - GAP*2;
-    return (inner - GAP*3) / 4;
-  }
-  function px(pos, s){ return { x: pos.c*(s+GAP), y: pos.r*(s+GAP) }; }
+class Float:
+    def __init__(self, text, x, y, color, life=1.4, vy=-40, size=22):
+        self.img = F(size, True).render(text, True, color)
+        self.x = min(max(10, x), W - self.img.get_width() - 10)
+        self.y, self.vy, self.life, self.max = y, vy, life, life
 
-  function buildTileEl(tile, s){
-    const wrapper = document.createElement('div');
-    wrapper.className = 'tile-pos';
-    wrapper.style.width = s+'px';
-    wrapper.style.height = s+'px';
+    def update(self, dt):
+        self.life -= dt
+        self.y += self.vy * dt
 
-    const inner = document.createElement('div');
-    inner.className = 'tile-inner';
-    const [bg, fg] = COLORS[tile.value] || ['#3C3A32','#F9F6F2'];
-    inner.style.background = bg;
-    inner.style.color = fg;
-    inner.style.fontSize = (tile.value>512 ? s*0.32 : tile.value>64 ? s*0.36 : s*0.42)+'px';
-    inner.textContent = tile.value;
+    def draw(self, scr):
+        a = max(0, min(255, int(255 * self.life / self.max * 1.5)))
+        self.img.set_alpha(a)
+        scr.blit(self.img, (self.x, self.y))
 
-    const startPos = tile.previousPosition || {r:tile.r, c:tile.c};
-    const startXY = px(startPos, s);
-    wrapper.style.transform = `translate(${startXY.x}px, ${startXY.y}px)`;
 
-    if(tile.previousPosition){
-      requestAnimationFrame(()=>{
-        requestAnimationFrame(()=>{
-          const endXY = px({r:tile.r,c:tile.c}, s);
-          wrapper.style.transition = 'transform 120ms cubic-bezier(0.22,1,0.36,1)';
-          wrapper.style.transform = `translate(${endXY.x}px, ${endXY.y}px)`;
-        });
-      });
-    } else if(tile.mergedFrom){
-      wrapper.classList.add('pop-merge');
-    } else {
-      wrapper.classList.add('pop-new');
-    }
+# ------------------------------- 게임 ------------------------------
+class Game:
+    def __init__(self):
+        pygame.init()
+        pygame.display.set_caption("영어단어 비내리기")
+        self.scr = pygame.display.set_mode((W, H))
+        self.clock = pygame.time.Clock()
+        global FONT_PATH
+        FONT_PATH = find_font_path()
+        self.rain = [[random.randint(0, W), random.randint(0, H), random.uniform(250, 500)] for _ in range(90)]
+        self.selected = set()
+        self.state = "menu"
+        self.last_days = []
+        self.missed_all = []  # 직전 게임에서 놓친 (en, ko)
+        self.reset_input()
 
-    wrapper.appendChild(inner);
-    return wrapper;
-  }
+    # ---------- 입력 ----------
+    def reset_input(self):
+        self.buf, self.comp, self.ignore = "", "", None
+        pygame.key.stop_text_input()
+        pygame.key.start_text_input()
+        pygame.key.set_text_input_rect(pygame.Rect(40, H - 80, 600, 50))
 
-  function actuate(gained){
-    const s = cellSize();
-    requestAnimationFrame(()=>{
-      tilesEl.innerHTML = '';
-      // render merge "ghost" source tiles first so they sit beneath the merged tile visually
-      grid.eachCell((r,c,tile)=>{
-        if(tile && tile.mergedFrom){
-          tile.mergedFrom.forEach(src => tilesEl.appendChild(buildTileEl(src, s)));
-        }
-      });
-      grid.eachCell((r,c,tile)=>{
-        if(tile) tilesEl.appendChild(buildTileEl(tile, s));
-      });
+    # ---------- 게임 시작 ----------
+    def start(self, pool, days_label):
+        self.pool_total = len(pool)
+        self.queue = pool[:]
+        random.shuffle(self.queue)
+        self.drops, self.floats = [], []
+        self.score = self.correct = 0
+        self.lives = MAX_LIVES
+        self.spawn_t = 0.8
+        self.missed = {}
+        self.label = days_label
+        self.shake = 0.0
+        self.win = False
+        self.state = "play"
+        self.reset_input()
 
-      scoreEl.textContent = score;
-      if(score > best){ best = score; saveBest(best); }
-      bestEl.textContent = best;
+    @property
+    def level(self):
+        return 1 + self.correct // 8
 
-      if(gained > 0){
-        const g = document.createElement('div');
-        g.className = 'float-gain';
-        g.textContent = '+' + gained;
-        scoreBox.appendChild(g);
-        setTimeout(()=> g.remove(), 700);
-      }
+    # ---------- 판정 ----------
+    def kill(self, d):
+        self.drops.remove(d)
+        self.correct += 1
+        self.score += 10 + self.level * 2
+        self.floats.append(Float(f"{d.en} = {d.ko}", d.x, d.y, (90, 230, 140)))
+        self.reset_input()
 
-      if(won && !keepPlaying){
-        winPanel.classList.add('show');
-      } else if(over){
-        overPanel.classList.add('show');
-      }
-    });
-  }
+    def try_auto(self):
+        t = norm(self.buf + self.comp)
+        if not t:
+            return
+        cands = [d for d in self.drops if t in d.ans]
+        if not cands:
+            return
+        for d in self.drops:  # 더 긴 정답을 치는 중일 수 있으면 기다림
+            if d not in cands and any(a != t and a.startswith(t) for a in d.ans):
+                return
+        self.kill(max(cands, key=lambda d: d.y))
 
-  window.addEventListener('keydown', (e)=>{
-    const map = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down' };
-    if(map[e.key]){ e.preventDefault(); move(map[e.key]); }
-  });
+    def submit(self):
+        text = self.buf + self.comp
+        if self.comp:
+            self.ignore = self.comp
+        t = norm(text)
+        cands = [d for d in self.drops if t and t in d.ans]
+        if cands:
+            self.kill(max(cands, key=lambda d: d.y))
+            self.ignore = self.comp or None
+        elif t:
+            self.shake = 0.3
+            self.reset_input()
+            self.ignore = self.comp or None
+        else:
+            self.reset_input()
 
-  let touchStartX=0, touchStartY=0;
-  boardEl.addEventListener('touchstart', (e)=>{
-    const t = e.changedTouches[0];
-    touchStartX = t.clientX; touchStartY = t.clientY;
-  }, {passive:true});
-  boardEl.addEventListener('touchend', (e)=>{
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStartX, dy = t.clientY - touchStartY;
-    if(Math.max(Math.abs(dx),Math.abs(dy)) < 24) return;
-    if(Math.abs(dx) > Math.abs(dy)) move(dx>0 ? 'right' : 'left');
-    else move(dy>0 ? 'down' : 'up');
-  }, {passive:true});
+    # ---------- 업데이트 ----------
+    def update_play(self, dt):
+        self.spawn_t -= dt
+        if self.spawn_t <= 0 and self.queue and len(self.drops) < 8:
+            en, ko = self.queue.pop()
+            self.drops.append(Drop(en, ko, self.level))
+            self.spawn_t = max(0.6, 2.4 - 0.12 * self.level)
+        for d in self.drops[:]:
+            d.update(dt)
+            if d.bottom >= GROUND_Y:
+                self.drops.remove(d)
+                self.lives -= 1
+                self.missed[d.en] = d.ko
+                self.queue.insert(0, (d.en, d.ko))  # 다시 나오게
+                self.floats.append(Float(f"놓침! {d.en} = {d.ko}", 20, GROUND_Y - 40, (255, 110, 110), 3.0, -10, 24))
+        for f in self.floats[:]:
+            f.update(dt)
+            if f.life <= 0:
+                self.floats.remove(f)
+        self.shake = max(0, self.shake - dt)
+        if self.lives <= 0:
+            self.finish(False)
+        elif not self.queue and not self.drops:
+            self.finish(True)
 
-  document.getElementById('newGame').addEventListener('click', setup);
-  document.getElementById('retryBtn').addEventListener('click', setup);
-  document.getElementById('restartFromWin').addEventListener('click', setup);
-  document.getElementById('continueBtn').addEventListener('click', ()=>{
-    keepPlaying = true;
-    winPanel.classList.remove('show');
-  });
-  window.addEventListener('resize', ()=> actuate(0));
+    def finish(self, win):
+        self.win = win
+        self.missed_all = list(self.missed.items())
+        self.state = "over"
 
-  setup();
-})();
-</script>
-</body>
-</html>
+    # ---------- 그리기 ----------
+    def draw_bg(self, dt):
+        self.scr.fill((14, 18, 36))
+        for r in self.rain:
+            r[1] += r[2] * dt
+            if r[1] > H:
+                r[0], r[1] = random.randint(0, W), -20
+            pygame.draw.line(self.scr, (40, 55, 95), (r[0], r[1]), (r[0], r[1] + 14), 1)
+
+    def text(self, s, size, color, x, y, bold=False, center=False):
+        img = F(size, bold).render(s, True, color)
+        self.scr.blit(img, (x - img.get_width() // 2 if center else x, y))
+        return img
+
+    def draw_menu(self):
+        self.text("영어단어 비내리기", 48, (190, 225, 255), W // 2, 40, True, True)
+        self.text("DAY를 클릭해서 고르고(여러 개 가능) START!", 20, (170, 180, 210), W // 2, 105, False, True)
+        self.btns = {}
+        bw, bh, gx, gy = 150, 62, 18, 16
+        x0 = (W - (5 * bw + 4 * gx)) // 2
+        for i, day in enumerate(sorted(DAYS)):
+            r = pygame.Rect(x0 + (i % 5) * (bw + gx), 150 + (i // 5) * (bh + gy), bw, bh)
+            on = day in self.selected
+            pygame.draw.rect(self.scr, (70, 130, 220) if on else (34, 42, 72), r, border_radius=12)
+            pygame.draw.rect(self.scr, (190, 225, 255) if on else (70, 82, 120), r, 2, border_radius=12)
+            self.text(f"DAY {day}", 24, (255, 255, 255), r.centerx, r.y + 16, True, True)
+            self.btns[day] = r
+        y = 150 + 5 * (bh + gy) + 10
+        for key, label, x, c in (("all", "전체 선택 (A)", 140, (60, 90, 150)),
+                                 ("none", "전체 해제 (C)", 360, (90, 70, 110)),
+                                 ("start", "START (Enter)", 580, (50, 160, 100))):
+            r = pygame.Rect(x, y, 200, 54)
+            pygame.draw.rect(self.scr, c, r, border_radius=12)
+            self.text(label, 22, (255, 255, 255), r.centerx, r.y + 14, True, True)
+            self.btns[key] = r
+        n = sum(len(DAYS[d]) for d in self.selected)
+        self.text(f"선택한 단어 {n}개", 22, (170, 180, 210), W // 2, y + 74, False, True)
+        self.text("Enter=판정 · Esc=입력 지우기/메뉴 · 뜻이 여러 개면 하나만 써도 정답", 18, (120, 130, 160), W // 2, H - 40, False, True)
+        if not FONT_PATH:
+            self.text("한글 폰트를 못 찾았어! NanumGothic.ttf를 같은 폴더에 넣어줘", 20, (255, 120, 120), W // 2, H - 70, True, True)
+
+    def draw_play(self):
+        for d in self.drops:
+            d.draw(self.scr)
+        for f in self.floats:
+            f.draw(self.scr)
+        pygame.draw.line(self.scr, (200, 80, 80), (0, GROUND_Y), (W, GROUND_Y), 2)
+        # HUD
+        self.text(f"{self.label}   점수 {self.score}   Lv.{self.level}   남은 단어 {len(self.queue) + len(self.drops)}", 22, (200, 210, 235), 16, 10, True)
+        for i in range(MAX_LIVES):
+            c = (255, 100, 120) if i < self.lives else (60, 60, 80)
+            pygame.draw.circle(self.scr, c, (W - 30 - i * 30, 24), 10)
+        # 입력창
+        box = pygame.Rect(30, H - 85, W - 60, 56)
+        off = int(8 * (self.shake / 0.3)) * (1 if int(self.shake * 60) % 2 else -1)
+        box.x += off
+        pygame.draw.rect(self.scr, (30, 36, 64), box, border_radius=12)
+        pygame.draw.rect(self.scr, (255, 110, 110) if self.shake > 0 else (110, 160, 230), box, 3, border_radius=12)
+        a = F(30).render(self.buf, True, (255, 255, 255))
+        b = F(30).render(self.comp, True, (255, 230, 120))
+        self.scr.blit(a, (box.x + 16, box.y + 10))
+        self.scr.blit(b, (box.x + 16 + a.get_width(), box.y + 10))
+        if self.comp:
+            pygame.draw.line(self.scr, (255, 230, 120), (box.x + 16 + a.get_width(), box.y + 44),
+                             (box.x + 16 + a.get_width() + b.get_width(), box.y + 44), 2)
+        if not (self.buf or self.comp):
+            self.text("여기에 뜻을 입력!", 26, (90, 100, 135), box.x + 16, box.y + 12)
+        if (pygame.time.get_ticks() // 500) % 2 == 0:
+            cx = box.x + 18 + a.get_width() + b.get_width()
+            pygame.draw.line(self.scr, (255, 255, 255), (cx, box.y + 10), (cx, box.y + 44), 2)
+
+    def draw_over(self):
+        title = "CLEAR!" if self.win else "GAME OVER"
+        self.text(title, 56, (120, 240, 160) if self.win else (255, 110, 110), W // 2, 30, True, True)
+        total = self.pool_total
+        self.text(f"{self.label} · 정답 {self.correct}/{total} · 점수 {self.score}", 24, (200, 210, 235), W // 2, 105, False, True)
+        miss = self.missed_all
+        self.text(f"놓친 단어 {len(miss)}개" if miss else "놓친 단어 없음! 완벽!", 24, (255, 200, 120), W // 2, 150, True, True)
+        for i, (en, ko) in enumerate(miss[:24]):
+            col, row = i // 12, i % 12
+            self.text(f"{en}  {ko}", 21, (230, 235, 250), 50 + col * 450, 195 + row * 32)
+        if len(miss) > 24:
+            self.text(f"... 외 {len(miss) - 24}개", 20, (160, 170, 200), 50, 195 + 12 * 32)
+        hint = "Enter: 다시   R: 놓친 단어만 다시   M: 메뉴" if miss else "Enter: 다시   M: 메뉴"
+        self.text(hint, 22, (170, 180, 210), W // 2, H - 50, False, True)
+
+    # ---------- 메인 루프 ----------
+    def run(self):
+        while True:
+            dt = min(self.clock.tick(FPS) / 1000.0, 0.05)
+            for ev in pygame.event.get():
+                if ev.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                self.handle(ev)
+            self.draw_bg(dt)
+            if self.state == "menu":
+                self.draw_menu()
+            elif self.state == "play":
+                self.update_play(dt)
+                if self.state == "play":
+                    self.draw_play()
+            if self.state == "over":
+                self.draw_over()
+            pygame.display.flip()
+
+    def start_selected(self):
+        days = sorted(self.selected)
+        if not days:
+            return
+        self.last_days = days
+        pool = [w for d in days for w in DAYS[d]]
+        label = f"DAY {days[0]}" if len(days) == 1 else f"DAY {days[0]}~{days[-1]}" if days == list(range(days[0], days[-1] + 1)) else f"{len(days)}개 DAY"
+        self.start(pool, label)
+
+    def handle(self, ev):
+        if self.state == "menu":
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                for k, r in self.btns.items():
+                    if r.collidepoint(ev.pos):
+                        if k == "all":
+                            self.selected = set(DAYS)
+                        elif k == "none":
+                            self.selected = set()
+                        elif k == "start":
+                            self.start_selected()
+                        else:
+                            self.selected ^= {k}
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self.start_selected()
+                elif ev.key == pygame.K_a:
+                    self.selected = set(DAYS)
+                elif ev.key == pygame.K_c:
+                    self.selected = set()
+                elif ev.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+        elif self.state == "play":
+            if ev.type == pygame.TEXTINPUT:
+                if self.ignore and ev.text == self.ignore:
+                    self.ignore = None
+                    return
+                self.buf += ev.text
+                self.comp = ""
+                self.try_auto()
+            elif ev.type == pygame.TEXTEDITING:
+                self.comp = ev.text
+                self.try_auto()
+            elif ev.type == pygame.KEYDOWN:
+                if ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self.submit()
+                elif ev.key == pygame.K_BACKSPACE:
+                    if not self.comp:
+                        self.buf = self.buf[:-1]
+                elif ev.key == pygame.K_ESCAPE:
+                    if self.buf or self.comp:
+                        self.reset_input()
+                    else:
+                        self.state = "menu"
+        elif self.state == "over":
+            if ev.type == pygame.KEYDOWN:
+                if ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
+                    self.start_selected()
+                elif ev.key == pygame.K_r and self.missed_all:
+                    self.start(self.missed_all[:], "오답 복습")
+                elif ev.key in (pygame.K_m, pygame.K_ESCAPE):
+                    self.state = "menu"
+
+
+if __name__ == "__main__":
+    Game().run()
